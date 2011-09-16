@@ -214,8 +214,9 @@ Read TracWorkflow for more information (don't forget to 'wiki upgrade' as well)
         this_action = self.actions[action]
         status = this_action['newstate']        
         operations = this_action['operations']
+        chrome = Chrome(self.env)
         current_owner = ticket._old.get('owner', ticket['owner'] or '(none)')
-        if not (Chrome(self.env).show_email_addresses
+        if not (chrome.show_email_addresses
                 or 'EMAIL_VIEW' in req.perm(ticket.resource)):
             format_user = obfuscate_email_address
         else:
@@ -264,7 +265,7 @@ Read TracWorkflow for more information (don't forget to 'wiki upgrade' as well)
                                    selected_owner=formatted_owner))
             else:
                 control.append(tag_('to %(owner)s', owner=tag.select(
-                    [tag.option(x, value=x,
+                    [tag.option(chrome.format_author(req, x), value=x,
                                 selected=(x == selected_owner or None))
                      for x in owners],
                     id=id, name=id)))

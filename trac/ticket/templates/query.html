@@ -83,7 +83,7 @@
                             <option></option>
                             <option py:for="option in field.options"
                               selected="${option == constraint_value and 'selected' or None}"
-                              value="$option" py:content="option"></option>
+                            value="$option" py:content="format_author(option)"></option>
                           </select>
                         </py:when>
 

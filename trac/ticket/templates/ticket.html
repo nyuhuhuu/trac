@@ -282,7 +282,7 @@ ${ticket.description}</textarea>
                           <option py:if="field.optional"></option>
                           <option py:for="option in field.options"
                                   selected="${value == option or None}"
-                                  value="$option" py:content="option"></option>
+                                  value="$option" py:content="format_author(option)"></option>
                           <optgroup py:for="optgroup in field.optgroups"
                                     py:if="optgroup.options"
                                     label="${optgroup.label}">

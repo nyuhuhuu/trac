@@ -1453,9 +1453,10 @@ class TicketModule(Component):
 
         def quote_original(author, original, link):
             if 'comment' not in req.args: # i.e. the comment was not yet edited
+                chrome = Chrome(self.env)
                 data['comment'] = '\n'.join(
                     ["Replying to [%s %s]:" % (link,
-                                        obfuscate_email_address(author))] +
+                                        chrome.format_author(req, author))] +
                     ["> %s" % line for line in original.splitlines()] + [''])
 
         if replyto == 'description':
@@ -1550,9 +1551,13 @@ class TicketModule(Component):
         # Display the owner and reporter links when not obfuscated
         chrome = Chrome(self.env)
         for user in 'reporter', 'owner':
-            if chrome.format_author(req, ticket[user]) == ticket[user]:
+            author = ticket[user]
+            formatted_author = chrome.format_author(req, author)
+            if formatted_author == author \
+                or chrome.show_full_names or chrome.show_email_addresses:
                 data['%s_link' % user] = self._query_link(req, user,
-                                                            ticket[user])
+                                                            author, 
+                                                            formatted_author)
         data.update({
             'context': context,
             'fields': fields, 'changes': changes,
@@ -1591,6 +1596,7 @@ class TicketModule(Component):
 
     def _render_property_diff(self, req, ticket, field, old, new, 
                               resource_new=None):
+        chrome = Chrome(self.env)
         rendered = None
         # per type special rendering of diffs
         type_ = None
@@ -1615,9 +1621,8 @@ class TicketModule(Component):
         render_elt = lambda x: x
         sep = ', '
         if field == 'cc':
-            chrome = Chrome(self.env)
             old_list, new_list = chrome.cc_list(old), chrome.cc_list(new)
-            if not (Chrome(self.env).show_email_addresses or 
+            if not (chrome.show_email_addresses or 
                     'EMAIL_VIEW' in req.perm(resource_new or ticket.resource)):
                 render_elt = obfuscate_email_address
         elif field == 'keywords':
@@ -1635,17 +1640,18 @@ class TicketModule(Component):
             if added or remvd:
                 rendered = tag(added, added and remvd and _("; "), remvd)
         if field in ('reporter', 'owner'):
-            if not (Chrome(self.env).show_email_addresses or 
+            if not (chrome.show_full_names or chrome.show_email_addresses or 
                     'EMAIL_VIEW' in req.perm(resource_new or ticket.resource)):
-                old = obfuscate_email_address(old)
-                new = obfuscate_email_address(new)
+                old = chrome.format_author(None, old)
+                new = chrome.format_author(None, new)
             if old and not new:
                 rendered = tag_("%(value)s deleted", value=tag.em(old))
             elif new and not old:
                 rendered = tag_("set to %(value)s", value=tag.em(new))
             elif old and new:
-                rendered = tag_("changed from %(old)s to %(new)s",
-                                old=tag.em(old), new=tag.em(new))
+                rendered = tag("changed from ", tag.em( \
+                                chrome.format_author(req, old)),
+                                " to ", tag.em(chrome.format_author(req, new)))
         return rendered
 
     def grouped_changelog_entries(self, ticket, db, when=None):

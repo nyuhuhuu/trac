@@ -283,7 +283,7 @@ class EnvironmentStub(Environment):
         self.href = Href('/trac.cgi')
         self.abs_href = Href('http://example.org/trac.cgi')
 
-        self.known_users = []
+        self.known_users = [('foo', 'Fred Foobar', 'fred@spammesenseless.net')]
         translation.activate(Locale and Locale('en', 'US'))
         
     def get_read_db(self):

@@ -33,6 +33,8 @@ from genshi.output import DocType
 from genshi.template import TemplateLoader, MarkupTemplate, NewTextTemplate
 
 from trac import __version__ as VERSION
+
+from trac.cache import cached
 from trac.config import *
 from trac.core import *
 from trac.env import IEnvironmentSetupParticipant, ISystemInfoProvider
@@ -327,6 +329,9 @@ class Chrome(Component):
     show_email_addresses = BoolOption('trac', 'show_email_addresses', 'false',
         """Show email addresses instead of usernames. If false, we obfuscate
         email addresses. (''since 0.11'')""")
+
+    show_full_names = BoolOption('trac', 'show_full_names', 'false',
+        """Show full names instead of usernames.""")
 
     never_obfuscate_mailto = BoolOption('trac', 'never_obfuscate_mailto', 
         'false',
@@ -910,6 +915,8 @@ class Chrome(Component):
         all_cc = self.cc_list(value)
         if not (self.show_email_addresses or 'EMAIL_VIEW' in context.perm):
             all_cc = [obfuscate_email_address(cc) for cc in all_cc]
+        else:
+            all_cc = [self.format_author(context, cc) for cc in all_cc]
         return sep.join(all_cc)
     
     def authorinfo(self, req, author, email_map=None):
@@ -921,7 +928,7 @@ class Chrome(Component):
         """Get the email addresses of all known users."""
         email_map = {}
         if self.show_email_addresses:
-            for username, name, email in self.env.get_known_users():
+            for username, (name, email) in self.known_users.items():
                 if email:
                     email_map[username] = email
         return email_map
@@ -939,9 +946,31 @@ class Chrome(Component):
     def format_author(self, req, author):
         if not author or author == 'anonymous':
             return _("anonymous")
-        if self.show_email_addresses or not req or 'EMAIL_VIEW' in req.perm:
+
+        show_email = self.show_email_addresses or req \
+                     and'EMAIL_VIEW' in req.perm 
+        if self.show_full_names:
+            if author in self.known_users:
+                name, email = (self.known_users[author][0], \
+                               self.known_users[author][1])
+                if name:
+                    if email and show_email:
+                        return '%s <%s>' % (name, email)
+                    else:
+                        return name            
+        if show_email:
             return author
         return obfuscate_email_address(author)
+
+    @cached
+    def known_users(self, db=None):
+        """Get the username, real name and email addresses of all known 
+        users as a dict. Key is username. Value is a tuple of name an email.
+        This method uses a cached attribute (a Trac 0.12+ enhancement)."""
+        users_known = {}
+        for (account, realname, email) in self.env.get_known_users(None):
+            users_known[account] = (realname, email)
+        return users_known
 
     # Element modifiers
 

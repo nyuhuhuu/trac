@@ -259,6 +259,42 @@ class ChromeTestCase(unittest.TestCase):
         self.assertEqual('test1', items[0]['name'])
         self.assertEqual('test2', items[1]['name'])
 
+    def test_format_author(self):
+        chrome = Chrome(self.env)
+        
+        login = 'foo'
+        name = 'Fred Foobar'
+        email = 'fred@spammesenseless.net'
+
+        self.env.config.set('trac', 'show_email_addresses', 'false')
+        self.env.config.set('trac', 'show_full_names', 'false')
+        fmt_author = chrome.format_author(None, None)
+        self.assertEqual('anonymous', fmt_author)
+
+        # Test with unknown user 
+        fmt_author = chrome.format_author(None, 'bar')
+        self.assertEqual('bar', fmt_author)
+
+        # Test with known user but no flag set
+        fmt_author = chrome.format_author(None, login)
+        self.assertEqual(login, fmt_author)
+        
+        # 'show_email_addresses = true' only affects the cc: emails
+        # as long as 'show_full_names' is not set
+        self.env.config.set('trac', 'show_email_addresses', 'true')
+        self.env.config.set('trac', 'show_full_names', 'false')
+        fmt_author = chrome.format_author(None, login)
+        self.assertEqual(login, fmt_author)
+        
+        self.env.config.set('trac', 'show_email_addresses', 'false')
+        self.env.config.set('trac', 'show_full_names', 'true')
+        fmt_author = chrome.format_author(None, login)
+        self.assertEqual(name, fmt_author)
+
+        self.env.config.set('trac', 'show_email_addresses', 'true')
+        self.env.config.set('trac', 'show_full_names', 'true')
+        fmt_author = chrome.format_author(None, login)
+        self.assertEqual(name + " <" + email + ">", fmt_author)
 
 def suite():
     return unittest.makeSuite(ChromeTestCase, 'test')
